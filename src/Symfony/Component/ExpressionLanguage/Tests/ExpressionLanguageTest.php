@@ -21,6 +21,7 @@ use Symfony\Component\ExpressionLanguage\ParsedExpression;
 use Symfony\Component\ExpressionLanguage\SyntaxError;
 use Symfony\Component\ExpressionLanguage\Tests\Fixtures\FooBackedEnum;
 use Symfony\Component\ExpressionLanguage\Tests\Fixtures\FooEnum;
+use Symfony\Component\ExpressionLanguage\Tests\Fixtures\MapItem;
 use Symfony\Component\ExpressionLanguage\Tests\Fixtures\TestProvider;
 
 class ExpressionLanguageTest extends TestCase
@@ -134,6 +135,79 @@ class ExpressionLanguageTest extends TestCase
         eval(\sprintf('$result = %s;', $expressionLanguage->compile('enum("Symfony\\\\Component\\\\ExpressionLanguage\\\\Tests\\\\Fixtures\\\\FooBackedEnum::Bar")')));
 
         $this->assertSame(FooBackedEnum::Bar, $result);
+    }
+
+    public function testMapFunctionWithArrayKeys()
+    {
+        $expressionLanguage = new ExpressionLanguage();
+        $values = ['items' => [['name' => 'foo'], ['name' => 'bar']]];
+
+        $this->assertSame(['foo', 'bar'], $expressionLanguage->evaluate('map(items, "name")', $values));
+        $this->assertTrue($expressionLanguage->evaluate('"bar" in map(items, "name")', $values));
+    }
+
+    public function testMapFunctionWithObjectMethods()
+    {
+        $expressionLanguage = new ExpressionLanguage();
+        $values = ['items' => [new MapItem('foo'), new MapItem('bar')]];
+
+        $this->assertSame(['foo', 'bar'], $expressionLanguage->evaluate('map(items, "getName")', $values));
+        $this->assertTrue($expressionLanguage->evaluate('"bar" in map(items, "getName")', $values));
+    }
+
+    public function testMapFunctionWithObjectMethodArguments()
+    {
+        $expressionLanguage = new ExpressionLanguage();
+        $values = ['items' => [new MapItem('foo'), new MapItem('bar')]];
+
+        $this->assertSame(['prefix_foo', 'prefix_bar'], $expressionLanguage->evaluate('map(items, "prefixedName", "prefix_")', $values));
+    }
+
+    public function testMapFunctionWithObjectProperties()
+    {
+        $expressionLanguage = new ExpressionLanguage();
+        $values = ['items' => [new MapItem('foo'), new MapItem('bar')]];
+
+        $this->assertSame(['foo', 'bar'], $expressionLanguage->evaluate('map(items, "name")', $values));
+    }
+
+    public function testMapFunctionPreservesKeys()
+    {
+        $expressionLanguage = new ExpressionLanguage();
+        $values = ['items' => ['a' => ['name' => 'foo'], 'b' => ['name' => 'bar']]];
+
+        $this->assertSame(['a' => 'foo', 'b' => 'bar'], $expressionLanguage->evaluate('map(items, "name")', $values));
+    }
+
+    public function testCompiledMapFunctionWithArrayKeys()
+    {
+        $result = null;
+        $expressionLanguage = new ExpressionLanguage();
+        $items = [['name' => 'foo'], ['name' => 'bar']];
+        eval(\sprintf('$result = %s;', $expressionLanguage->compile('map(items, "name")', ['items'])));
+
+        $this->assertSame(['foo', 'bar'], $result);
+    }
+
+    public function testCompiledMapFunctionWithObjectMethods()
+    {
+        $result = null;
+        $expressionLanguage = new ExpressionLanguage();
+        $items = [new MapItem('foo'), new MapItem('bar')];
+        eval(\sprintf('$result = %s;', $expressionLanguage->compile('map(items, "getName")', ['items'])));
+
+        $this->assertSame(['foo', 'bar'], $result);
+    }
+
+    public function testCompiledMapFunctionWithObjectMethodArguments()
+    {
+        $result = null;
+        $expressionLanguage = new ExpressionLanguage();
+        $items = [new MapItem('foo'), new MapItem('bar')];
+        $prefix = 'prefix_';
+        eval(\sprintf('$result = %s;', $expressionLanguage->compile('map(items, "prefixedName", prefix)', ['items', 'prefix'])));
+
+        $this->assertSame(['prefix_foo', 'prefix_bar'], $result);
     }
 
     #[DataProvider('providerTestCases')]

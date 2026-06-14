@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+8.1
+---
+
+ * Add the `map` expression function to apply a property/method accessor to each element of a collection
+
 8.0
 ---
 

@@ -157,6 +157,34 @@ class ExpressionLanguage
                 return $value;
             }
         ));
+
+        // map(collection, accessor, ...args) applies an accessor to each element of a collection
+        // and returns the resulting list (keys are preserved). The accessor is resolved per element:
+        //  * an array or \ArrayAccess element is accessed by key ($element[$accessor]);
+        //  * a callable method on an object element is called ($element->$accessor(...args));
+        //  * otherwise the object property is read ($element->$accessor).
+        $this->addFunction(new ExpressionFunction('map',
+            static fn ($collection, $accessor, ...$args): string => \sprintf(
+                '(static function (iterable $c, string $a, ...$args): array { $r = []; foreach ($c as $k => $i) { $r[$k] = \is_array($i) || $i instanceof \ArrayAccess ? $i[$a] : (\is_callable([$i, $a]) ? $i->{$a}(...$args) : $i->{$a}); } return $r; })(%s, %s%s)',
+                $collection,
+                $accessor,
+                $args ? ', '.implode(', ', $args) : '',
+            ),
+            static function ($values, $collection, $accessor, ...$args): array {
+                $result = [];
+                foreach ($collection as $key => $element) {
+                    if (\is_array($element) || $element instanceof \ArrayAccess) {
+                        $result[$key] = $element[$accessor];
+                    } elseif (\is_callable([$element, $accessor])) {
+                        $result[$key] = $element->{$accessor}(...$args);
+                    } else {
+                        $result[$key] = $element->{$accessor};
+                    }
+                }
+
+                return $result;
+            }
+        ));
     }
 
     private function getLexer(): Lexer
